@@ -23,6 +23,8 @@ using namespace std;
         Worker() {worker_id = -1; worker_coefficient = -1; occupancy = false;}
         Worker(int _worker_id, int _worker_coefficient) {worker_id = _worker_id; worker_coefficient = _worker_coefficient; occupancy = false;}
         void set_worker_on(Car *_car);
+        
+        void print_worker();
         //getters:
         int get_worker_id() {return worker_id;}
         int get_worker_coefficient() {return worker_coefficient;}
@@ -57,10 +59,10 @@ using namespace std;
             return false;
         }
 
-        void show_car(bool finished) {
+        void show_car(bool print_t) {
             cout << "\tCar ID: " << car_id << endl;
             cout << "\tLuxury Coefficient: " << luxury_coefficient << endl;
-            if (!_is_in_queue && !finished)
+            if (print_t)
                 cout << "\tTime Left: "  << time_left << endl;
         }
         
@@ -77,6 +79,18 @@ using namespace std;
         occupancy = true;
     }
 
+    void Worker::print_worker() {
+            cout << "\t\tWorker ID: " << worker_id << endl;
+            // cout << "\t\t\tCoefficient: " << worker_coefficient << endl;  //erase this line at the end
+            if (occupancy)
+            {
+                cout << "\t\tworking on this car:\n";
+                onit_car->show_car(true);
+            }
+            else
+                cout << "\t\t\tFree\n";
+    }
+
     class Stage
     {
         int stage_id;
@@ -86,6 +100,27 @@ using namespace std;
         Stage(int _stage_id, vector<Worker* > _worker_list){stage_id = _stage_id;worker_list = _worker_list;}
         
         //returns the index of first free worker in worker_list vector
+        bool is_this_stg(int s_id) {return s_id == stage_id;}
+
+        void print_stage(bool print_q) {
+            cout << "Stage ID: " << stage_id << endl;
+        //wrkrs
+            cout << "\tworkers:\n";
+            for (int j = 0; j < worker_list.size(); ++j)
+            {
+                worker_list[j]->print_worker();
+            }
+        //queue
+            if (print_q)
+            {
+                cout << "\tCars in waiting queue:\n";
+                for (int i = 0; i < cars_in_queue.size(); ++i)
+                {
+                    /*cout << "\t\t" << */cars_in_queue[i]->show_car(false)/* << endl*/;
+                }
+            }
+        }
+
         int available_worker() {
             for (int i = 0; i < worker_list.size(); ++i)
                 if (worker_list[i]->get_occupancy() == false)
@@ -166,7 +201,7 @@ int main()
         if (first_word == "add_stage")
             pipeline.add_stage(command);
         else if (first_word == "add_car")
-            pipeline.add_car(second_string_to_int(command));//construct car and deploy it in first stage queue but don`t advance time
+            pipeline.add_car(second_string_to_int(command)); //construct car and deploy it in first stage queue but don`t advance time
         else if (first_word == "show_stage_info")
             pipeline.show_stage_info(second_string_to_int(command));
         else if (first_word == "advance_time")
@@ -175,7 +210,7 @@ int main()
             for (int i = 0; i < time_steps; ++i)
             {
                 pipeline.advance_time();
-                pipeline.show_carwash();                
+                pipeline.show_carwash();  //dbg             
             }
         }
         else if (first_word == "show_carwash_info")
@@ -185,55 +220,24 @@ int main()
             while (!pipeline.all_cars_finished())
             {
                 pipeline.advance_time();
-                pipeline.show_carwash();           
+                pipeline.show_carwash();  //dgb         
             }
         }
         else
             cout << "Invalid command\n";
 
-        cout << "\nOK\n----------------------------------------------------------\n";
+        cout << "----------------------------------------------------------\n";
     }
-}
-
-void Carwash::show_carwash()
-{
-    //time
-    cout << "time passed: " << time_passed << endl;
-    
-    for (int i = 0; i < stage_list.size(); ++i)
-    {
-        //queues
-        if (i == 0)
-            cout << "Cars waiting:\n";
-        else
-            cout << "Cars in waiting queue:\n";
-        
-        stage_list[i]->print_queue();
-        
-        //stages
-        if (i == 0)
-            cout << "Stages info: \n";
-        
-        show_stage_info(9900 + i);
-    }
-    //former customers:
-    cout << "Cars finished:\n";
-    for (int i = 0; i < former_customers.size(); ++i)
-    {
-        former_customers[i]->show_car(true);
-    }
-
-    cout << "*******************************\n";
 }
 
 //funcs:
-    
     void Carwash::add_car(int lux_co)
     {
         //deploy it on first stage queue
         stage_list[0]->add_car_to_queue(new Car(cars_ID, lux_co));        
 
         cars_ID++;
+        cout << "\nOK\n";
     }
 
     void Carwash::add_stage(string s)
@@ -255,6 +259,7 @@ void Carwash::show_carwash()
         }
         stage_list.push_back(new Stage(stages_ID, _worker_list));
         stages_ID++;
+        cout << "\nOK\n";
     }
 
     void Carwash::show_stage_info(int stg_id)
@@ -263,38 +268,48 @@ void Carwash::show_carwash()
         int sel_stg_idx;
         for (int i = 0; i < stage_list.size(); ++i)
         {
-            if (stage_list[i]->get_stage_id() == stg_id)
+            if (stage_list[i]->is_this_stg(stg_id))
             {
                 sel_stg_idx = i;
                 break;
             }
         }
 
-        cout << "Stage ID: " << stage_list[sel_stg_idx]->get_stage_id() << endl;
-        vector<Worker* > stg_wrkrs = stage_list[sel_stg_idx]->get_worker_list();
-        deque<Car* > qcars = stage_list[sel_stg_idx]->get_cars_in_queue();
+        stage_list[sel_stg_idx]->print_stage(true);     //prints stage without it queue
+        cout << "\nOK\n";
+    }
 
-    //wrkrs:
-        cout << "\tworkers:\n";
-        for (int j = 0; j < stg_wrkrs.size(); ++j)
+    void Carwash::show_carwash()
+    {
+        //time
+        cout << "time passed: " << time_passed << endl;
+        
+        for (int i = 0; i < stage_list.size(); ++i)
         {
-            cout << "\t\tWorker ID: " << stg_wrkrs[j]->get_worker_id() << endl;
-            // cout << "\t\t\tCoefficient: " << stg_wrkrs[j]->get_worker_coefficient() << endl;  //erase this line at the end
-            if (stg_wrkrs[j]->get_occupancy())
-            {
-                cout << "\t\t\tWorking on Car: " << stg_wrkrs[j]->get_onit_car()->get_car_id() << endl;
-                cout << "\t\t\t\tLuxury coefficient: " << stg_wrkrs[j]->get_onit_car()->get_luxury_coefficient() << endl;
-                cout << "\t\t\t\tTime left: " << stg_wrkrs[j]->get_onit_car()->get_time_left() << endl;
-            }
+            //queues
+            if (i == 0)
+                cout << "Cars waiting:\n";
             else
-                cout << "\t\t\tFree\n";
+                cout << "Cars in waiting queue:\n";
+            
+            stage_list[i]->print_queue();
+            
+            //stages
+            if (i == 0)
+                cout << "Stages info: \n";
+            
+            stage_list[i]->print_stage(false);  //prints stage without its queue
         }
-    ////queue:
-        // cout << "\tCars in waiting queue:\n";
-        // for (int i = 0; i < qcars.size(); ++i)
-        // {
-        //     cout << "\t\t" << qcars[i]->get_car_id() << endl;
-        // }
+
+        //former customers:
+        cout << "Cars finished:\n";
+        for (int i = 0; i < former_customers.size(); ++i)
+        {
+            former_customers[i]->show_car(false); 
+        }
+
+        cout << "*******************************\n";
+        cout << "\nOK\n";
     }
 
     int second_string_to_int(string cmd)
